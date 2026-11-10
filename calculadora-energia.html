@@ -1,0 +1,438 @@
+<title>Quanto Gasta Sua Casa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Calculadora de consumo de energia: escolha os aparelhos da sua casa e veja quanto eles gastam por mês e como economizar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: lista de aparelhos à esquerda, "visor do medidor" fixo à direita; no celular, barra de total fixa embaixo */
+:root{
+  --bg:#F2F5EF; --surface:#FFFFFF; --ink:#15211D; --muted:#56655F; --line:#D9E1D6;
+  --accent:#0A6B4C; --accent-ink:#FFFFFF; --accent-soft:#E1F0E8;
+  --volt:#F4C21B; --volt-ink:#1E1A05; --meter:#13201B; --meter-ink:#E9F5EE;
+  --display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1613; --surface:#17211D; --ink:#E6EEE9; --muted:#9BAAA3; --line:#2A3631;
+  --accent:#3CCB8D; --accent-ink:#06150F; --accent-soft:#16352A;
+  --volt:#F4C21B; --volt-ink:#1E1A05; --meter:#0A100D; --meter-ink:#E9F5EE; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1613; --surface:#17211D; --ink:#E6EEE9; --muted:#9BAAA3; --line:#2A3631;
+  --accent:#3CCB8D; --accent-ink:#06150F; --accent-soft:#16352A;
+  --volt:#F4C21B; --volt-ink:#1E1A05; --meter:#0A100D; --meter-ink:#E9F5EE; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px}
+.wrap{max-width:1160px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--volt);outline-offset:2px;border-radius:6px}
+
+header.top{padding-block:28px 20px;display:grid;gap:10px}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(2rem,5vw,3.3rem);font-weight:800;letter-spacing:-.02em}
+h1 mark{background:linear-gradient(transparent 58%,var(--volt) 58%);color:inherit;padding:0 .08em}
+.lead{max-width:62ch;color:var(--muted);margin:0;font-size:18px}
+
+.steps{display:flex;flex-wrap:wrap;gap:8px 18px;margin:6px 0 0;padding:0;list-style:none;font-size:15px}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:14px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.bar-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.bar-tools h2{font-size:22px}
+.example{font-size:14px;background:var(--volt);color:var(--volt-ink);padding:4px 10px;border-radius:99px;font-weight:700}
+.btn-ghost{background:none;border:1.5px solid var(--line);border-radius:99px;padding:8px 16px;font-size:15px;font-weight:700}
+.btn-ghost:hover{border-color:var(--ink)}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:7px 14px;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;align-content:start;transition:border-color .15s, box-shadow .15s}
+.card.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.card-head{display:flex;gap:12px;align-items:center;background:none;border:0;padding:0;text-align:left;width:100%}
+.ico{flex:none;width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:var(--bg);color:var(--ink)}
+.card.on .ico{background:var(--accent);color:var(--accent-ink)}
+.ico svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card-title{min-width:0;flex:1}
+.card-title strong{display:block;font-size:17px;line-height:1.25}
+.card-title span{font-size:14px;color:var(--muted);display:block;line-height:1.3}
+.toggle{flex:none;width:32px;height:32px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:700;font-size:20px;line-height:1}
+.card.on .toggle{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ctrls{display:grid;gap:10px}
+.ctrl{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ctrl label{font-size:14px;color:var(--muted);line-height:1.2}
+.stepper{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:99px;overflow:hidden;flex:none}
+.stepper button{width:40px;height:40px;background:none;border:0;font-size:22px;font-weight:700}
+.stepper button:hover{background:var(--accent-soft)}
+.stepper output{min-width:74px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.card-cost{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--line);padding-top:10px;font-size:14px;color:var(--muted)}
+.card-cost b{font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* Painel de resultado */
+.panel{position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:grid;gap:16px}
+.meter{background:var(--meter);color:var(--meter-ink);border-radius:20px;padding:22px;display:grid;gap:14px}
+.meter .label{font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;font-weight:700}
+.big{font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,7vw,3.4rem);line-height:1;color:var(--volt);font-variant-numeric:tabular-nums}
+.big small{font-size:.38em;color:var(--meter-ink);opacity:.8;font-weight:600}
+.dials{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dial{border:1px solid rgba(233,245,238,.18);border-radius:12px;padding:10px 12px}
+.dial span{display:block;font-size:13px;opacity:.75}
+.dial b{font-size:20px;font-variant-numeric:tabular-nums}
+.breakdown{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:15px}
+.breakdown li{display:flex;justify-content:space-between;gap:10px}
+.breakdown span{opacity:.8}
+.breakdown b{font-variant-numeric:tabular-nums}
+.faixa{margin:0;font-size:14px;background:rgba(244,194,27,.14);border-left:3px solid var(--volt);border-radius:6px;padding:8px 10px}
+.faixa:empty{display:none}
+.seg{display:flex;flex-basis:100%;border:1.5px solid rgba(233,245,238,.35);border-radius:99px;padding:3px;gap:3px}
+.seg button{flex:1;background:none;border:0;border-radius:99px;padding:7px 10px;color:var(--meter-ink);font-weight:700;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--volt);color:var(--volt-ink)}
+.tarifa{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;border-top:1px solid rgba(233,245,238,.18);padding-top:14px}
+.tarifa label{opacity:.85}
+.tarifa input{width:110px;background:transparent;color:var(--meter-ink);border:1.5px solid rgba(233,245,238,.35);border-radius:10px;padding:6px 10px;font:inherit;font-weight:700}
+.tarifa small{flex-basis:100%;opacity:.7;font-size:13px}
+
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:12px}
+.box h3{font-size:19px}
+.rank{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.rank li{display:grid;gap:4px}
+.rank .row{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.rank .row b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.track{height:10px;border-radius:99px;background:var(--bg);overflow:hidden}
+.fill{height:100%;border-radius:99px;background:var(--accent);transition:width .3s}
+.rank li:first-child .fill{background:var(--volt)}
+.empty{color:var(--muted);font-size:15px;margin:0}
+
+.tips{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.tips li{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.tips .save{flex:none;background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:10px;padding:4px 8px;font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.total-save{background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:12px 14px;font-size:15px}
+.total-save b{font-size:20px}
+
+/* Barra fixa no celular */
+.mobile-bar{display:none}
+@media (max-width:900px){
+  .panel{position:static}
+  .mobile-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--meter);color:var(--meter-ink);
+    padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+    box-shadow:0 -6px 20px rgba(0,0,0,.18)}
+  .mobile-bar .v{font-family:var(--display);font-weight:800;font-size:26px;color:var(--volt);font-variant-numeric:tabular-nums;line-height:1}
+  .mobile-bar span{font-size:13px;opacity:.8;display:block}
+  .mobile-bar a{background:var(--volt);color:var(--volt-ink);text-decoration:none;font-weight:700;border-radius:99px;padding:10px 16px;font-size:15px}
+}
+
+section.how{margin-top:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.how .box p{margin:0;color:var(--muted);font-size:15px}
+.formula{font-family:var(--display);font-weight:600;font-size:17px;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--ink)}
+footer{margin-top:32px;font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Projeto de extensão · Economia de energia</div>
+    <h1>Quanto a sua casa <mark>gasta de luz</mark>?</h1>
+    <p class="lead">Marque os aparelhos que você tem e diga por quanto tempo usa cada um. A conta aparece na hora, com dicas para pagar menos.</p>
+    <ol class="steps">
+      <li><b>1</b>Escolha os aparelhos</li>
+      <li><b>2</b>Ajuste quantidade e tempo de uso</li>
+      <li><b>3</b>Veja o gasto e as dicas</li>
+    </ol>
+  </header>
+
+  <div class="grid">
+    <main>
+      <div class="bar-tools">
+        <h2>Seus aparelhos</h2>
+        <span class="example" id="exampleTag">Exemplo: ajuste para a sua casa</span>
+        <button class="btn-ghost" id="clearBtn" type="button">Limpar tudo</button>
+      </div>
+      <div class="filters" role="group" aria-label="Filtrar por cômodo" id="filters"></div>
+      <div class="list" id="list"></div>
+    </main>
+
+    <aside class="panel" id="resultado" aria-live="polite">
+      <div class="meter">
+        <div class="label">Estimativa da sua conta de luz</div>
+        <div class="big" id="totalMes">R$ 0<small> /mês</small></div>
+        <div class="dials">
+          <div class="dial"><span>Consumo por mês</span><b id="kwhMes">0 kWh</b></div>
+          <div class="dial"><span>Em um ano</span><b id="totalAno">R$ 0</b></div>
+        </div>
+        <ul class="breakdown">
+          <li><span>Energia (sem imposto)</span><b id="bEnergia">R$ 0,00</b></li>
+          <li><span id="bIcmsLabel">ICMS</span><b id="bIcms">R$ 0,00</b></li>
+        </ul>
+        <p class="faixa" id="faixa"></p>
+        <div class="tarifa">
+          <div class="seg" role="group" aria-label="Tipo de imóvel">
+            <button type="button" data-cat="res" aria-pressed="true">Residencial</button>
+            <button type="button" data-cat="com" aria-pressed="false">Comercial</button>
+          </div>
+          <label for="tarifa">Tarifa sem imposto (R$/kWh)</label>
+          <input id="tarifa" type="number" inputmode="decimal" min="0.1" max="5" step="0.0001" value="0.7894">
+          <small>Tarifa base Enel SP (residencial B1 e comercial B3). O ICMS é calculado pela faixa de consumo.</small>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3>Quem mais gasta</h3>
+        <ol class="rank" id="rank"></ol>
+      </div>
+
+      <div class="box">
+        <h3>Como economizar</h3>
+        <ul class="tips" id="tips"></ul>
+        <div class="total-save" id="totalSave" hidden></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="how" aria-label="Como funciona o cálculo">
+    <div class="box">
+      <h3>Como calculamos</h3>
+      <div class="formula">Potência (W) × horas de uso no mês ÷ 1000 = kWh por mês</div>
+      <p>Depois multiplicamos os kWh pela tarifa sem imposto da Enel SP e somamos o ICMS. Geladeira e freezer ficam ligados o dia todo, e máquinas como a de lavar e a lava-louças trabalham por ciclo, então usamos o consumo médio delas.</p>
+    </div>
+    <div class="box">
+      <h3>Como entra o ICMS</h3>
+      <p>Em casa, a alíquota depende do total gasto no mês: até 90 kWh é isento, de 91 a 200 kWh é 12% e acima de 200 kWh é 18%, aplicado sobre todo o consumo. Em imóvel comercial é sempre 18%. O ICMS é calculado "por dentro", como na conta de luz: o valor sem imposto é dividido por (1 − alíquota). Por isso 18% de ICMS aumenta a conta em cerca de 22%.</p>
+    </div>
+    <div class="box">
+      <h3>O que é kWh?</h3>
+      <p>É a unidade que aparece na sua conta de luz. Um aparelho de 1.000 W ligado por 1 hora consome 1 kWh. O chuveiro elétrico, por exemplo, gasta isso em pouco mais de 10 minutos.</p>
+    </div>
+    <div class="box">
+      <h3>Por que é uma estimativa?</h3>
+      <p>Cada modelo tem uma potência diferente. Os valores aqui são médias de aparelhos comuns. Confira a etiqueta do seu aparelho (o selo Procel/Inmetro) e as bandeiras tarifárias do mês, que podem aumentar a conta.</p>
+    </div>
+  </section>
+
+  <footer>Calculadora educativa feita para um projeto de extensão. Os resultados são aproximados e não substituem a leitura da conta de luz.</footer>
+</div>
+
+<div class="mobile-bar" aria-hidden="true">
+  <div><span>Sua conta estimada</span><div class="v" id="mTotal">R$ 0</div></div>
+  <a href="#resultado">Ver resultado</a>
+</div>
+
+<script>
+(function(){
+const I = {
+  geladeira:'<rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M6 9.5h12M9 5.5v2M9 12v3"/>',
+  freezer:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 8h3M12 13v4M10 14l4 2M14 14l-4 2"/>',
+  fogao:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="2.5"/><circle cx="15.5" cy="9.5" r="2.5"/><path d="M3 14h18M8 17h8"/>',
+  forno:'<rect x="2.5" y="4" width="19" height="16" rx="2"/><rect x="5.5" y="9" width="13" height="8" rx="1"/><path d="M6 6.5h.01M9 6.5h.01M14 6.5h4"/>',
+  microondas:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><rect x="5" y="8" width="10" height="8" rx="1"/><path d="M18 9v.01M18 12v.01M18 15v.01"/>',
+  airfryer:'<path d="M6 7a6 4 0 0 1 12 0v10a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/><path d="M6 12h12M10 4.5h4"/>',
+  lavaLoucas:'<rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M4 7h16M7 4.8h.01M10 4.8h.01"/><path d="M8 17v-4M11 17v-5M14 17v-4M17 17v-3"/>',
+  chuveiro:'<path d="M4 4h6a3 3 0 0 1 3 3v2"/><path d="M8 9h10l-1.5 4h-7z"/><path d="M10 16v1.5M13 16v3M16 16v1.5M11.5 20v1M14.5 19v1"/>',
+  secador:'<path d="M3 7.5a4.5 4.5 0 0 1 4.5-4.5H17v9H7.5A4.5 4.5 0 0 1 3 7.5z"/><path d="M17 5h3M17 10h3M9 12l1 9h3l-1-9"/>',
+  lavar:'<rect x="4" y="2.5" width="16" height="19" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M7 6h.01M10 6h4"/>',
+  lavaSeca:'<rect x="4" y="2.5" width="16" height="19" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M7 6h.01M10 6h4M10.5 11.5c1 .8 1 2.2 0 3M13.5 11.5c1 .8 1 2.2 0 3"/>',
+  ferro:'<path d="M3 17h18l-1.5-6a4 4 0 0 0-3.9-3H8"/><path d="M8 8V5h7M7 14h.01"/>',
+  ar:'<rect x="2.5" y="5" width="19" height="8" rx="2"/><path d="M5.5 10h13M7 16c0 1.5-1 2-1 3M12 16c0 1.5-1 2-1 3M17 16c0 1.5-1 2-1 3"/>',
+  ventilador:'<circle cx="12" cy="10" r="7"/><path d="M12 10c0-3 1-4 2.5-4M12 10c3 0 4 1 4 2.5M12 10c-2.5 1.5-4 1-4.5-.5M12 17v4M8 21h8"/>',
+  tv:'<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  lampada:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.8c.6.5 1 1.2 1 2V16h5v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  lampadaComum:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.8c.6.5 1 1.2 1 2V16h5v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/><path d="M10.5 12.5l1.5-3 1.5 3"/>',
+  notebook:'<rect x="4" y="4.5" width="16" height="11" rx="1.5"/><path d="M2 19h20l-1.5-3.5h-17z"/>',
+  computador:'<rect x="2.5" y="3.5" width="19" height="12" rx="1.5"/><path d="M9 20h6M12 15.5V20"/>',
+  videogame:'<path d="M7 8h10a4 4 0 0 1 4 4.5l-.6 3.5a2.5 2.5 0 0 1-4.3 1.2L14.5 15h-5l-1.6 2.2A2.5 2.5 0 0 1 3.6 16L3 12.5A4 4 0 0 1 7 8z"/><path d="M7.5 11v3M6 12.5h3M15.5 12h.01M17.5 13.5h.01"/>',
+  caixa:'<rect x="6" y="2.5" width="12" height="19" rx="2"/><circle cx="12" cy="14.5" r="3.5"/><circle cx="12" cy="7" r="1.5"/>',
+  alexa:'<path d="M5 9h14v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/><ellipse cx="12" cy="9" rx="7" ry="2"/><path d="M8.5 5c2-1.5 5-1.5 7 0"/>',
+  celular:'<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  roteador:'<rect x="3" y="13" width="18" height="6" rx="2"/><path d="M7 13l-1.5-6M17 13l1.5-6M7 16h.01M10 16h.01"/>'
+};
+
+/* tipo: h = horas/dia · min = minutos/dia · sem = horas/semana · ciclo = vezes/semana (kWh por ciclo) · fixo = kWh/mês */
+const A = [
+  {id:'geladeira',grupo:'Cozinha',nome:'Geladeira',tipo:'fixo',kwh:35,info:'Ligada o dia todo · ~35 kWh/mês'},
+  {id:'freezer',grupo:'Cozinha',nome:'Freezer',tipo:'fixo',kwh:40,info:'Ligado o dia todo · ~40 kWh/mês'},
+  {id:'fogao',grupo:'Cozinha',nome:'Fogão elétrico ou cooktop',w:1800,tipo:'min',uso:40,passo:5,max:300,info:'1.800 W por boca · fogão a gás quase não gasta luz',qrot:'Bocas usadas'},
+  {id:'forno',grupo:'Cozinha',nome:'Forno elétrico',w:1500,tipo:'min',uso:20,passo:5,max:240,info:'1.500 W'},
+  {id:'microondas',grupo:'Cozinha',nome:'Micro-ondas',w:1200,tipo:'min',uso:10,passo:5,max:180,info:'1.200 W'},
+  {id:'airfryer',grupo:'Cozinha',nome:'Air fryer',w:1500,tipo:'min',uso:20,passo:5,max:180,info:'1.500 W'},
+  {id:'lavaLoucas',grupo:'Cozinha',nome:'Lava-louças',tipo:'ciclo',kwhC:1.2,uso:4,passo:1,max:21,info:'~1,2 kWh por lavagem'},
+  {id:'chuveiro',grupo:'Banheiro',nome:'Chuveiro elétrico',w:5500,tipo:'min',uso:40,passo:5,max:300,info:'5.500 W',rot:'Minutos por dia (todos os banhos)'},
+  {id:'secador',grupo:'Banheiro',nome:'Secador de cabelo',w:1500,tipo:'min',uso:10,passo:5,max:120,info:'1.500 W'},
+  {id:'lavar',grupo:'Lavanderia',nome:'Máquina de lavar tradicional',tipo:'ciclo',kwhC:0.4,uso:3,passo:1,max:21,info:'Só lava · ~0,4 kWh por lavagem'},
+  {id:'lavaSeca',grupo:'Lavanderia',nome:'Lava e seca',tipo:'ciclo',kwhC:3,uso:3,passo:1,max:21,info:'~3 kWh por ciclo completo'},
+  {id:'ferro',grupo:'Lavanderia',nome:'Ferro de passar',w:1000,tipo:'sem',uso:2,passo:.5,max:40,info:'1.000 W'},
+  {id:'ar',grupo:'Quarto e sala',nome:'Ar-condicionado',w:900,tipo:'h',uso:4,passo:.5,max:24,info:'900 W · 9.000 BTUs'},
+  {id:'ventilador',grupo:'Quarto e sala',nome:'Ventilador',w:80,tipo:'h',uso:6,passo:1,max:24,info:'80 W'},
+  {id:'tv',grupo:'Quarto e sala',nome:'Televisão',w:100,tipo:'h',uso:4,passo:.5,max:24,info:'100 W'},
+  {id:'lampada',grupo:'Iluminação',nome:'Lâmpada LED',w:9,tipo:'h',uso:5,passo:1,max:24,info:'9 W'},
+  {id:'lampadaComum',grupo:'Iluminação',nome:'Lâmpada comum (amarela)',w:60,tipo:'h',uso:4,passo:1,max:24,info:'60 W · Incandescente'},
+  {id:'notebook',grupo:'Eletrônicos',nome:'Notebook',w:50,tipo:'h',uso:4,passo:.5,max:24,info:'50 W'},
+  {id:'computador',grupo:'Eletrônicos',nome:'Computador de mesa',w:200,tipo:'h',uso:4,passo:.5,max:24,info:'200 W'},
+  {id:'videogame',grupo:'Eletrônicos',nome:'Videogame',w:150,tipo:'h',uso:2,passo:.5,max:24,info:'150 W'},
+  {id:'caixa',grupo:'Eletrônicos',nome:'Caixa de som',w:30,tipo:'h',uso:3,passo:.5,max:24,info:'30 W · caixas grandes gastam mais'},
+  {id:'alexa',grupo:'Eletrônicos',nome:'Alexa (assistente de voz)',w:3,tipo:'h',uso:24,passo:1,max:24,info:'3 W · fica ligada o dia todo'},
+  {id:'celular',grupo:'Eletrônicos',nome:'Carregador de celular',w:5,tipo:'h',uso:3,passo:1,max:24,info:'5 W'},
+  {id:'roteador',grupo:'Eletrônicos',nome:'Roteador de internet',w:10,tipo:'h',uso:24,passo:1,max:24,info:'10 W'}
+];
+const byId = Object.fromEntries(A.map(a=>[a.id,a]));
+const EXEMPLO = {geladeira:{q:1,u:0},chuveiro:{q:1,u:40},tv:{q:1,u:4},lampada:{q:6,u:5},celular:{q:2,u:3},microondas:{q:1,u:10},lavar:{q:1,u:3},roteador:{q:1,u:24},ventilador:{q:1,u:6},alexa:{q:1,u:24}};
+
+let state, isExample = true, tarifa = 0.7894, cat = 'res', filtro = 'Todos';
+try{ const s = JSON.parse(localStorage.getItem('calc-energia-v4')||'null'); if(s){state=s.state;tarifa=s.tarifa||0.7894;cat=s.cat||'res';isExample=!!s.ex;} }catch(e){}
+if(!state) state = JSON.parse(JSON.stringify(EXEMPLO));
+function save(){ try{localStorage.setItem('calc-energia-v4',JSON.stringify({state,tarifa,cat,ex:isExample}));}catch(e){} }
+
+/* ICMS em SP: residencial isento até 90 kWh, 12% de 91 a 200 kWh e 18% acima de 200 kWh (sobre todo o consumo);
+   comercial 18% fixo. O ICMS é cobrado "por dentro": valor final = valor sem imposto ÷ (1 − alíquota). */
+function aliquota(kwh){ if(cat==='com') return .18; if(kwh<=90) return 0; if(kwh<=200) return .12; return .18; }
+function conta(kwh){ const base=kwh*tarifa, al=aliquota(kwh), total=al?base/(1-al):base; return {base,al,icms:total-base,total}; }
+
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const brl0 = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const n1 = v => v.toLocaleString('pt-BR',{maximumFractionDigits:v<10?1:0});
+
+function kwhMes(a,q,u){
+  if(a.tipo==='fixo') return a.kwh*q;
+  if(a.tipo==='ciclo') return a.kwhC*u*30/7*q;
+  const h = a.tipo==='min' ? u/60*30 : a.tipo==='sem' ? u*30/7 : u*30;
+  return a.w*h/1000*q;
+}
+function fmtUso(a,u){
+  if(a.tipo==='min') return u+' min';
+  if(a.tipo==='ciclo') return u+(u===1?' vez':' vezes');
+  const h=Math.floor(u), m=Math.round((u-h)*60);
+  if(h===0) return m+' min';
+  return h+' h'+(m?(' '+m):'');
+}
+function rotulo(a){ return a.rot || ({min:'Minutos por dia',sem:'Horas por semana',ciclo:'Vezes por semana',h:'Horas por dia'})[a.tipo]; }
+
+const grupos = ['Todos',...new Set(A.map(a=>a.grupo))];
+const fEl = document.getElementById('filters');
+grupos.forEach(g=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=g;
+  b.onclick=()=>{filtro=g; renderList();}; fEl.appendChild(b); });
+
+const list = document.getElementById('list');
+function stepper(id,campo,val){
+  return `<div class="stepper"><button type="button" aria-label="Diminuir" data-act="dec" data-id="${id}" data-f="${campo}">−</button><output>${val}</output><button type="button" aria-label="Aumentar" data-act="inc" data-id="${id}" data-f="${campo}">+</button></div>`;
+}
+function renderList(){
+  [...fEl.children].forEach(b=>b.setAttribute('aria-pressed', b.textContent===filtro));
+  list.innerHTML = A.filter(a=>filtro==='Todos'||a.grupo===filtro).map(a=>{
+    const s=state[a.id]; const on=!!s;
+    let ctrls='';
+    if(on){
+      const k=kwhMes(a,s.q,s.u);
+      ctrls = `<div class="ctrls">
+        <div class="ctrl"><label>${a.qrot||'Quantidade'}</label>${stepper(a.id,'q',s.q)}</div>
+        ${a.tipo!=='fixo'?`<div class="ctrl"><label>${rotulo(a)}</label>${stepper(a.id,'u',fmtUso(a,s.u))}</div>`:''}
+      </div>
+      <div class="card-cost"><span>${n1(k)} kWh/mês</span><b>${brl(k*precoMedio)}</b></div>`;
+    }
+    return `<div class="card${on?' on':''}">
+      <button type="button" class="card-head" data-act="toggle" data-id="${a.id}" aria-pressed="${on}">
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true">${I[a.id]}</svg></span>
+        <span class="card-title"><strong>${a.nome}</strong><span>${a.info}</span></span>
+        <span class="toggle" aria-hidden="true">${on?'✓':'+'}</span>
+      </button>${ctrls}</div>`;
+  }).join('');
+}
+
+list.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  const a=byId[b.dataset.id]; const act=b.dataset.act;
+  if(act==='toggle'){
+    if(state[a.id]) delete state[a.id]; else state[a.id]={q:1,u:a.uso||0};
+  } else {
+    const s=state[a.id]; const d=act==='inc'?1:-1;
+    if(b.dataset.f==='q') s.q=Math.min(50,Math.max(1,s.q+d));
+    else s.u=Math.round(Math.min(a.max,Math.max(a.passo,s.u+d*a.passo))*100)/100;
+  }
+  isExample=false; update(b);
+});
+
+document.getElementById('clearBtn').onclick=()=>{ state={}; isExample=false; update(); };
+const tEl=document.getElementById('tarifa'); tEl.value=tarifa;
+tEl.addEventListener('input',()=>{ const v=parseFloat(String(tEl.value).replace(',','.')); if(v>0){tarifa=v; update();} });
+const segBtns=[...document.querySelectorAll('.seg button')];
+segBtns.forEach(b=>b.addEventListener('click',()=>{ cat=b.dataset.cat; update(); }));
+let precoMedio = tarifa;
+
+function dicas(K){
+  /* cada dica guarda quantos kWh economiza; o valor em reais é a diferença da conta inteira, já com o ICMS da nova faixa */
+  const out=[], custo=(a,q,u)=>kwhMes(a,q,u);
+  const emReais = dk => conta(K).total - conta(Math.max(0,K-dk)).total;
+  for(const id in state){
+    const a=byId[id], s=state[id], c=custo(a,s.q,s.u); let t=null, nova=null;
+    switch(id){
+      case 'chuveiro': if(s.u>=15){nova=s.u-10;t='Encurte os banhos: 10 minutos a menos no total do dia. Nos dias quentes, use a chave na posição verão.';} break;
+      case 'lampadaComum': out.push({t:`Troque ${s.q>1?'as '+s.q+' lâmpadas comuns':'a lâmpada comum'} por LED. Ilumina igual e gasta cerca de 85% menos.`,v:c-9*s.u*30/1000*s.q}); break;
+      case 'ar': if(s.u>=1.5){nova=s.u-1;t='Use o ar 1 hora a menos por dia, regule em 23 °C e mantenha portas e janelas fechadas.';} break;
+      case 'tv': case 'videogame': case 'computador': case 'caixa': if(s.u>=1.5){nova=s.u-1;t=`Desligue ${id==='tv'?'a televisão':id==='caixa'?'a caixa de som':'o '+a.nome.toLowerCase()} quando ninguém estiver usando: 1 hora a menos por dia.`;} break;
+      case 'lavar': if(s.u>=2){nova=s.u-1;t='Junte as roupas e lave com a máquina cheia: uma lavagem a menos por semana.';} break;
+      case 'lavaSeca': if(s.u>=1){out.push({t:'Seque as roupas no varal sempre que der. A secagem é a parte que mais gasta: um ciclo de secagem a menos por semana.',v:(a.kwhC-0.4)*30/7*s.q});} break;
+      case 'lavaLoucas': if(s.u>=2){nova=s.u-1;t='Ligue a lava-louças só quando estiver cheia: uma lavagem a menos por semana.';} break;
+      case 'ferro': if(s.u>=1){nova=s.u-.5;t='Junte as roupas e passe tudo de uma vez, em vez de ligar o ferro várias vezes.';} break;
+      case 'forno': if(s.u>=20){nova=s.u-10;t='Não abra a porta do forno durante o preparo e asse mais de uma coisa de cada vez: 10 minutos a menos por dia.';} break;
+      case 'fogao': if(s.u>=20){nova=s.u-10;t='Cozinhe com a panela tampada e desligue a boca um pouco antes do fim: 10 minutos a menos por dia.';} break;
+      case 'secador': case 'airfryer': case 'microondas': if(s.u>=10){nova=s.u-5;t=`Use ${id==='airfryer'?'a air fryer':'o '+a.nome.toLowerCase()} 5 minutos a menos por dia.`;} break;
+      case 'ventilador': if(s.u>=3){nova=s.u-1;t='Desligue o ventilador ao sair do cômodo: 1 hora a menos por dia.';} break;
+      case 'lampada': if(s.u>=3){nova=s.u-1;t='Apague as luzes ao sair do cômodo e aproveite a luz do dia.';} break;
+    }
+    if(t && nova!==null) out.push({t,v:c-custo(a,s.q,nova)});
+  }
+  out.forEach(d=>{ d.k=d.v; d.v=emReais(d.v); });
+  out.sort((x,y)=>y.v-x.v);
+  const extra=[];
+  if(state.geladeira||state.freezer) extra.push({t:'Não guarde comida quente na geladeira, abra a porta o mínimo possível e confira se a borracha veda bem.',v:0});
+  extra.push({t:'Tire da tomada os aparelhos com luz de espera (stand-by) quando não estiver usando.',v:0});
+  return out.slice(0,4).concat(extra).slice(0,6);
+}
+
+function update(focusBtn){
+  const ids=Object.keys(state);
+  let kwh=0; const itens=[];
+  for(const id of ids){ const a=byId[id]; const k=kwhMes(a,state[id].q,state[id].u); kwh+=k; itens.push({a,k}); }
+  const cta=conta(kwh), total=cta.total;
+  precoMedio = kwh>0 ? total/kwh : tarifa;
+  segBtns.forEach(b=>b.setAttribute('aria-pressed', b.dataset.cat===cat));
+  document.getElementById('bEnergia').textContent=brl(cta.base);
+  document.getElementById('bIcmsLabel').textContent='ICMS ('+Math.round(cta.al*100)+'%)';
+  document.getElementById('bIcms').textContent=brl(cta.icms);
+  const fx=document.getElementById('faixa');
+  if(!ids.length) fx.textContent='';
+  else if(cat==='com') fx.textContent='Imóvel comercial: ICMS de 18% sobre todo o consumo.';
+  else if(kwh<=90) fx.textContent='Até 90 kWh por mês: sua conta fica isenta de ICMS.';
+  else if(kwh<=200) fx.textContent=`Entre 91 e 200 kWh: ICMS de 12%. Se baixar ${n1(kwh-90)} kWh, a conta fica isenta.`;
+  else fx.textContent=`Acima de 200 kWh: ICMS de 18%. Se baixar ${n1(kwh-200)} kWh, o imposto cai para 12%.`;
+  document.getElementById('totalMes').innerHTML=brl(total)+'<small> /mês</small>';
+  document.getElementById('kwhMes').textContent=n1(kwh)+' kWh';
+  document.getElementById('totalAno').textContent=brl0(total*12);
+  document.getElementById('mTotal').textContent=brl(total);
+  document.getElementById('exampleTag').hidden=!isExample;
+
+  itens.sort((x,y)=>y.k-x.k);
+  const max=itens[0]?itens[0].k:1;
+  document.getElementById('rank').innerHTML = itens.length ? itens.slice(0,6).map(({a,k})=>`<li><div class="row"><span>${a.nome}${state[a.id].q>1?' ('+state[a.id].q+')':''}</span><b>${brl(k*precoMedio)} · ${Math.round(k/kwh*100)}%</b></div><div class="track"><div class="fill" style="width:${Math.max(3,k/max*100)}%"></div></div></li>`).join('')
+    : '<p class="empty">Marque pelo menos um aparelho para ver o resultado.</p>';
+
+  const ds=dicas(kwh); const kSoma=ds.reduce((s,d)=>s+(d.k||0),0);
+  const soma = cta.total - conta(Math.max(0,kwh-kSoma)).total;
+  document.getElementById('tips').innerHTML = ids.length ? ds.map(d=>`<li>${d.v>0.005?`<span class="save">−${brl(d.v)}</span>`:'<span class="save">Dica</span>'}<span>${d.t}</span></li>`).join('') : '<li class="empty">As dicas aparecem quando você escolher seus aparelhos.</li>';
+  const ts=document.getElementById('totalSave');
+  if(soma>0.5){ ts.hidden=false; ts.innerHTML=`Seguindo essas dicas, você pode economizar cerca de <b>${brl(soma)}</b> por mês, ou ${brl0(soma*12)} por ano.`; } else ts.hidden=true;
+
+  const fsel = focusBtn ? `button[data-act="${focusBtn.dataset.act}"][data-id="${focusBtn.dataset.id}"]${focusBtn.dataset.f?`[data-f="${focusBtn.dataset.f}"]`:''}` : null;
+  renderList();
+  if(fsel){ const nb=list.querySelector(fsel); if(nb) nb.focus({preventScroll:true}); }
+  save();
+}
+update();
+})();
+</script>
